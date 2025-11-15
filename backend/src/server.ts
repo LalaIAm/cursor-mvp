@@ -37,8 +37,15 @@ app.use(errorHandler);
 
 const PORT = config.server.port;
 
-// Only start server if not in test environment and this file is run directly
-if (process.env.NODE_ENV !== 'test' && require.main === module) {
+// Start server if:
+// 1. Not in Jest test environment (Jest sets process.env.JEST_WORKER_ID)
+// 2. OR START_SERVER env var is explicitly set to 'true'
+// 3. AND this file is run directly (not imported)
+const shouldStartServer = 
+  require.main === module && 
+  (!process.env.JEST_WORKER_ID || process.env.START_SERVER === 'true');
+
+if (shouldStartServer) {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📝 Environment: ${config.server.nodeEnv}`);

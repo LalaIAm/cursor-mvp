@@ -217,8 +217,12 @@ jobs:
         run: |
           npm start &
           echo "Backend server starting..."
+          sleep 3
         env:
+          NODE_ENV: ci
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/tarotlyfe_test
+          TEST_DATABASE_URL: postgresql://test_user:test_password@localhost:5432/tarotlyfe_test
+          START_SERVER: 'true'
           JWT_SECRET: test-jwt-secret-for-ci
           PORT: 3001
           EMAIL_PROVIDER: console

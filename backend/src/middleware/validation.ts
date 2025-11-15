@@ -7,7 +7,9 @@ import { z, ZodError } from "zod";
 export const validate = (schema: z.ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
-      schema.parse(req.body);
+      // Parse and apply transformations (e.g., toLowerCase(), trim())
+      // Assign the transformed result back to req.body
+      req.body = schema.parse(req.body);
       next();
     } catch (error) {
       if (error instanceof ZodError) {

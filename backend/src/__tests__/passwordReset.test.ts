@@ -4,10 +4,18 @@ import { query, queryOne } from '../db/connection';
 import { hashPassword } from '../utils/password';
 import { hashRefreshToken } from '../utils/jwt';
 import { generateResetToken } from '../services/passwordResetService';
+
+// Mock email service before importing
+jest.mock('../services/emailService', () => ({
+  sendPasswordResetEmail: jest.fn().mockResolvedValue({
+    success: true,
+    messageId: 'test-message-id',
+  }),
+}));
+
+// Import after mock
 import { sendPasswordResetEmail } from '../services/emailService';
 
-// Mock email service
-jest.mock('../services/emailService');
 const mockSendPasswordResetEmail = sendPasswordResetEmail as jest.MockedFunction<typeof sendPasswordResetEmail>;
 
 describe('POST /api/auth/password-reset/request', () => {
@@ -18,8 +26,12 @@ describe('POST /api/auth/password-reset/request', () => {
 
   beforeEach(async () => {
     // Clean up test data
-    await query('DELETE FROM password_reset_tokens');
-    await query('DELETE FROM users WHERE email = $1', [testUser.email]);
+    try {
+      await query('DELETE FROM password_reset_tokens');
+      await query('DELETE FROM users WHERE email = $1', [testUser.email.toLowerCase()]);
+    } catch (error) {
+      // Ignore errors during cleanup
+    }
     mockSendPasswordResetEmail.mockClear();
     mockSendPasswordResetEmail.mockResolvedValue({
       success: true,
@@ -29,16 +41,21 @@ describe('POST /api/auth/password-reset/request', () => {
 
   afterEach(async () => {
     // Clean up test data
-    await query('DELETE FROM password_reset_tokens');
-    await query('DELETE FROM users WHERE email = $1', [testUser.email]);
+    try {
+      await query('DELETE FROM password_reset_tokens');
+      await query('DELETE FROM users WHERE email = $1', [testUser.email.toLowerCase()]);
+    } catch (error) {
+      // Ignore errors during cleanup
+    }
   });
 
   it('should return generic success for existing email', async () => {
-    // Create test user
+    // Create test user (email will be normalized by validation middleware, so use normalized version)
     const passwordHash = await hashPassword(testUser.password);
+    const normalizedEmail = testUser.email.toLowerCase().trim();
     await query(
       'INSERT INTO users (email, password_hash) VALUES ($1, $2)',
-      [testUser.email, passwordHash]
+      [normalizedEmail, passwordHash]
     );
 
     const response = await request(app)
@@ -103,11 +120,12 @@ describe('POST /api/auth/password-reset/request', () => {
   });
 
   it('should handle email send failure gracefully', async () => {
-    // Create test user
+    // Create test user (use normalized email to match API behavior)
     const passwordHash = await hashPassword(testUser.password);
+    const normalizedEmail = testUser.email.toLowerCase().trim();
     await query(
       'INSERT INTO users (email, password_hash) VALUES ($1, $2)',
-      [testUser.email, passwordHash]
+      [normalizedEmail, passwordHash]
     );
 
     // Mock email failure
@@ -136,22 +154,31 @@ describe('POST /api/auth/password-reset/confirm', () => {
 
   beforeEach(async () => {
     // Clean up test data
-    await query('DELETE FROM password_reset_tokens');
-    await query('DELETE FROM users WHERE email = $1', [testUser.email]);
+    try {
+      await query('DELETE FROM password_reset_tokens');
+      await query('DELETE FROM users WHERE email = $1', [testUser.email.toLowerCase()]);
+    } catch (error) {
+      // Ignore errors during cleanup
+    }
   });
 
   afterEach(async () => {
     // Clean up test data
-    await query('DELETE FROM password_reset_tokens');
-    await query('DELETE FROM users WHERE email = $1', [testUser.email]);
+    try {
+      await query('DELETE FROM password_reset_tokens');
+      await query('DELETE FROM users WHERE email = $1', [testUser.email.toLowerCase()]);
+    } catch (error) {
+      // Ignore errors during cleanup
+    }
   });
 
   it('should successfully reset password with valid token', async () => {
-    // Create test user
+    // Create test user (use normalized email to match API behavior)
     const passwordHash = await hashPassword(testUser.password);
+    const normalizedEmail = testUser.email.toLowerCase().trim();
     const userResult = await queryOne<{ id: string }>(
       'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id',
-      [testUser.email, passwordHash]
+      [normalizedEmail, passwordHash]
     );
     const userId = userResult!.id;
 
@@ -217,11 +244,12 @@ describe('POST /api/auth/password-reset/confirm', () => {
   });
 
   it('should return 400 for expired token', async () => {
-    // Create test user
+    // Create test user (use normalized email to match API behavior)
     const passwordHash = await hashPassword(testUser.password);
+    const normalizedEmail = testUser.email.toLowerCase().trim();
     const userResult = await queryOne<{ id: string }>(
       'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id',
-      [testUser.email, passwordHash]
+      [normalizedEmail, passwordHash]
     );
     const userId = userResult!.id;
 
@@ -255,11 +283,12 @@ describe('POST /api/auth/password-reset/confirm', () => {
   });
 
   it('should return 400 for already used token', async () => {
-    // Create test user
+    // Create test user (use normalized email to match API behavior)
     const passwordHash = await hashPassword(testUser.password);
+    const normalizedEmail = testUser.email.toLowerCase().trim();
     const userResult = await queryOne<{ id: string }>(
       'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id',
-      [testUser.email, passwordHash]
+      [normalizedEmail, passwordHash]
     );
     const userId = userResult!.id;
 
@@ -286,11 +315,12 @@ describe('POST /api/auth/password-reset/confirm', () => {
   });
 
   it('should return 400 for weak password', async () => {
-    // Create test user
+    // Create test user (use normalized email to match API behavior)
     const passwordHash = await hashPassword(testUser.password);
+    const normalizedEmail = testUser.email.toLowerCase().trim();
     const userResult = await queryOne<{ id: string }>(
       'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id',
-      [testUser.email, passwordHash]
+      [normalizedEmail, passwordHash]
     );
     const userId = userResult!.id;
 
@@ -339,11 +369,12 @@ describe('POST /api/auth/password-reset/confirm', () => {
   });
 
   it('should enforce one-time use of token', async () => {
-    // Create test user
+    // Create test user (use normalized email to match API behavior)
     const passwordHash = await hashPassword(testUser.password);
+    const normalizedEmail = testUser.email.toLowerCase().trim();
     const userResult = await queryOne<{ id: string }>(
       'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id',
-      [testUser.email, passwordHash]
+      [normalizedEmail, passwordHash]
     );
     const userId = userResult!.id;
 

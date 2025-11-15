@@ -151,7 +151,7 @@ const LoginPage = () => {
             </div>
 
             {/* Password field */}
-            <div className="mb-6">
+            <div className="mb-4">
               <Input
                 type="password"
                 name="password"
@@ -163,6 +163,20 @@ const LoginPage = () => {
                 required
                 disabled={isSubmitting}
               />
+            </div>
+
+            {/* Forgot password link */}
+            <div className="mb-6 text-right">
+              <a
+                href="/password-reset"
+                className="text-sm text-primary-600 hover:text-primary-700 font-semibold underline focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate('/password-reset');
+                }}
+              >
+                Forgot password?
+              </a>
             </div>
 
             {/* Submit button */}

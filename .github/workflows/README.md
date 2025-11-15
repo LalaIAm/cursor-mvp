@@ -1,15 +1,19 @@
 # CI/CD Workflows
 
-This directory contains GitHub Actions workflows for continuous integration and deployment.
+This directory contains GitHub Actions workflows for continuous integration and
+deployment.
 
 ## CI Workflow (`.github/workflows/ci.yml`)
 
 ### Overview
-The CI workflow runs on every push and pull request to `main` and `develop` branches. It executes all tests and generates comprehensive coverage reports.
+
+The CI workflow runs on every push and pull request to `main` and `develop`
+branches. It executes all tests and generates comprehensive coverage reports.
 
 ### Jobs
 
 #### 1. Backend Tests
+
 - **Runs on**: Ubuntu Latest
 - **Services**: PostgreSQL 15 (test database)
 - **Steps**:
@@ -23,6 +27,7 @@ The CI workflow runs on every push and pull request to `main` and `develop` bran
   8. Upload coverage reports as artifacts
 
 #### 2. Frontend Tests
+
 - **Runs on**: Ubuntu Latest
 - **Steps**:
   1. Checkout code
@@ -32,6 +37,7 @@ The CI workflow runs on every push and pull request to `main` and `develop` bran
   5. Upload coverage reports as artifacts
 
 #### 3. Frontend E2E Tests
+
 - **Runs on**: Ubuntu Latest
 - **Services**: PostgreSQL 15 (test database)
 - **Dependencies**: Backend Tests, Frontend Tests
@@ -50,6 +56,7 @@ The CI workflow runs on every push and pull request to `main` and `develop` bran
   12. Upload test results, videos, and screenshots as artifacts
 
 #### 4. Test Report Summary
+
 - **Runs on**: Ubuntu Latest
 - **Dependencies**: Backend Tests, Frontend Tests, Frontend E2E Tests
 - **Steps**:
@@ -63,7 +70,8 @@ The CI workflow runs on every push and pull request to `main` and `develop` bran
 The workflow generates multiple coverage report formats:
 
 - **HTML Reports**: Interactive coverage reports (download from artifacts)
-- **LCOV Reports**: Standard format for coverage tools (Codecov, Coveralls, etc.)
+- **LCOV Reports**: Standard format for coverage tools (Codecov, Coveralls,
+  etc.)
 - **JSON Summary**: Machine-readable coverage summary
 - **Text Reports**: Console-friendly coverage output
 
@@ -72,14 +80,17 @@ The workflow generates multiple coverage report formats:
 The following artifacts are uploaded and retained for 30 days:
 
 **Backend:**
+
 - `backend-coverage`: Complete backend coverage directory (HTML, LCOV, JSON)
 - `backend-lcov`: Backend LCOV file only
 
 **Frontend:**
+
 - `frontend-coverage`: Complete frontend coverage directory (HTML, LCOV, JSON)
 - `frontend-lcov`: Frontend LCOV file only
 
 **E2E Tests:**
+
 - `cypress-test-results`: JUnit XML test reports
 - `cypress-videos`: Test execution videos
 - `cypress-screenshots`: Failure screenshots
@@ -97,6 +108,7 @@ The following artifacts are uploaded and retained for 30 days:
 The workflow uses the following environment variables (set automatically):
 
 **Backend:**
+
 - `NODE_ENV=test`
 - `DATABASE_URL=postgresql://test_user:test_password@localhost:5432/tarotlyfe_test`
 - `JWT_SECRET=test-jwt-secret-for-ci`
@@ -104,6 +116,7 @@ The workflow uses the following environment variables (set automatically):
 - `PASSWORD_RESET_TOKEN_TTL_HOURS=1`
 
 **Frontend:**
+
 - Standard test environment (no special variables needed)
 
 ### Future Enhancements
@@ -113,4 +126,3 @@ The workflow uses the following environment variables (set automatically):
 - [ ] Parallel test execution for faster runs
 - [ ] Matrix builds for multiple Node.js versions
 - [ ] Cypress Dashboard integration for better test visualization
-

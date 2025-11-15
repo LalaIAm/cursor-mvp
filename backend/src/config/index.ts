@@ -1,10 +1,14 @@
 import dotenv from 'dotenv';
 
+// Load .env file (won't override existing env vars)
 dotenv.config();
 
 export const config = {
   database: {
-    url: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/tarotlyfe',
+    // Use TEST_DATABASE_URL if in test environment, otherwise DATABASE_URL, with fallback
+    url: process.env.NODE_ENV === 'test' 
+      ? (process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://test_user:test_password@localhost:5432/tarotlyfe_test')
+      : (process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/tarotlyfe'),
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',

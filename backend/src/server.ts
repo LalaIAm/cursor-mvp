@@ -37,10 +37,13 @@ app.use(errorHandler);
 
 const PORT = config.server.port;
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📝 Environment: ${config.server.nodeEnv}`);
-});
+// Only start server if not in test environment and this file is run directly
+if (process.env.NODE_ENV !== 'test' && require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📝 Environment: ${config.server.nodeEnv}`);
+  });
+}
 
 export default app;
 

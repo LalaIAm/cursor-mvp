@@ -1,19 +1,24 @@
+// Mock email service BEFORE any imports that might use it
+jest.mock('../services/emailService', () => ({
+  sendPasswordResetEmail: jest.fn().mockResolvedValue({
+    success: true,
+    messageId: 'test-message-id',
+  }),
+  __esModule: true,
+  default: {
+    sendEmail: jest.fn().mockResolvedValue({
+      success: true,
+      messageId: 'test-message-id',
+    }),
+  },
+}));
+
 import request from 'supertest';
 import app from '../server';
 import { query, queryOne } from '../db/connection';
 import { hashPassword } from '../utils/password';
 import { hashRefreshToken } from '../utils/jwt';
 import { generateResetToken } from '../services/passwordResetService';
-
-// Mock email service before importing
-jest.mock('../services/emailService', () => ({
-  sendPasswordResetEmail: jest.fn().mockResolvedValue({
-    success: true,
-    messageId: 'test-message-id',
-  }),
-}));
-
-// Import after mock
 import { sendPasswordResetEmail } from '../services/emailService';
 
 const mockSendPasswordResetEmail = sendPasswordResetEmail as jest.MockedFunction<typeof sendPasswordResetEmail>;

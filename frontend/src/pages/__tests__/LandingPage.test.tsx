@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { axe, toHaveNoViolations } from 'jest-axe';
+import { AuthProvider } from '@/context/AuthContext';
 import LandingPage from '../LandingPage';
 
 expect.extend(toHaveNoViolations);
@@ -12,20 +13,33 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
-// Mock auth utility
-jest.mock('@/utils/auth', () => ({
-  shouldRedirectToDashboard: jest.fn(() => false),
+// Mock useAuth hook to control authentication state
+const mockUseAuth = jest.fn();
+jest.mock('@/context/AuthContext', () => ({
+  ...jest.requireActual('@/context/AuthContext'),
+  useAuth: () => mockUseAuth(),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 describe('LandingPage', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
+    // Default to unauthenticated
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: false,
+      user: null,
+      isLoading: false,
+      setAuth: jest.fn(),
+      clearAuth: jest.fn(),
+    });
   });
 
   const renderLandingPage = () => {
     return render(
       <MemoryRouter>
-        <LandingPage />
+        <AuthProvider>
+          <LandingPage />
+        </AuthProvider>
       </MemoryRouter>
     );
   };
@@ -132,8 +146,14 @@ describe('LandingPage', () => {
   });
 
   it('redirects authenticated users to dashboard', () => {
-    const authModule = require('@/utils/auth');
-    authModule.shouldRedirectToDashboard.mockReturnValue(true);
+    // Mock authenticated state
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: true,
+      user: { id: '1', email: 'test@example.com' },
+      isLoading: false,
+      setAuth: jest.fn(),
+      clearAuth: jest.fn(),
+    });
 
     renderLandingPage();
     expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true });

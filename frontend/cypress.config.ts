@@ -8,6 +8,13 @@ export default defineConfig({
     },
     viewportWidth: 1280,
     viewportHeight: 720,
+    video: true,
+    screenshotOnRunFailure: true,
+    reporter: 'junit',
+    reporterOptions: {
+      mochaFile: 'cypress/reports/junit-[hash].xml',
+      toConsole: true,
+    },
   },
   component: {
     devServer: {

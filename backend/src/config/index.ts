@@ -24,6 +24,18 @@ export const config = {
   bcrypt: {
     rounds: parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
   },
+  passwordReset: {
+    tokenTTLHours: parseInt(process.env.PASSWORD_RESET_TOKEN_TTL_HOURS || '1', 10),
+  },
+  email: {
+    provider: process.env.EMAIL_PROVIDER || 'console',
+    from: process.env.EMAIL_FROM || 'noreply@tarotlyfe.com',
+    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+    sendgridApiKey: process.env.SENDGRID_API_KEY,
+    sesRegion: process.env.AWS_SES_REGION,
+    sesAccessKey: process.env.AWS_SES_ACCESS_KEY,
+    sesSecretKey: process.env.AWS_SES_SECRET_KEY,
+  },
 };
 
 // Validate required environment variables

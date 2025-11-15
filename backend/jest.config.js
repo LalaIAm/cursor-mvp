@@ -10,7 +10,7 @@ module.exports = {
     '!src/server.ts',
   ],
   coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov', 'html'],
+  coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   transform: {
     '^.+\\.ts$': 'ts-jest',

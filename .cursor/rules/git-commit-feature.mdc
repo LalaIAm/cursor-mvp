@@ -1,0 +1,16 @@
+---
+alwaysApply: true
+---
+
+# Github Commits
+
+require:
+    description: Ensure feature development occurs on a dedicated branch and code changes are committed.
+    when: implementing_a_new_feature
+    steps:
+
+- Create a new branch in the Github repository before starting feature work.
+- Commit the branch to the repository before any code implementation.
+- After implementing the feature, commit all code changes to the branch before any further
+development.
+- Do not implement features directly on the main or default branch.

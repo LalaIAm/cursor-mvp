@@ -26,6 +26,8 @@ module.exports = {
     '!src/main.tsx',
     '!src/vite-env.d.ts',
   ],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
   testTimeout: 10000,
   transformIgnorePatterns: [
     'node_modules/(?!(react-router-dom|@testing-library)/)',

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { shouldRedirectToDashboard } from '@/utils/auth';
+import { useAuth } from '@/context/AuthContext';
 import SEO from '@/components/SEO';
 
 /**
@@ -14,13 +14,14 @@ import SEO from '@/components/SEO';
  */
 const LandingPage = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     // Redirect authenticated users to dashboard
-    if (shouldRedirectToDashboard()) {
+    if (isAuthenticated) {
       navigate('/dashboard', { replace: true });
     }
-  }, [navigate]);
+  }, [isAuthenticated, navigate]);
 
   const handleSignUp = () => {
     navigate('/signup');

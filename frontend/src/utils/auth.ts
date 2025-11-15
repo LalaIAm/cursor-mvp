@@ -1,6 +1,7 @@
 /**
  * Auth utility functions
- * TODO: Integrate with actual auth state management (Redux/Zustand) when available
+ * Note: Auth state is now managed via AuthContext
+ * TODO: Migrate to Redux Toolkit or Zustand when available
  */
 
 export interface User {
@@ -10,32 +11,28 @@ export interface User {
 
 /**
  * Check if user is authenticated
- * TODO: Replace with actual auth state check from Redux/Zustand store
+ * @deprecated Use useAuth hook from AuthContext instead
+ * This function is kept for backward compatibility with components that haven't migrated yet
  */
 export const isAuthenticated = (): boolean => {
-  // Placeholder: Check localStorage or auth store
-  // In production, this would check JWT token validity
-  const token = localStorage.getItem('auth_token');
-  return !!token;
+  // This is a fallback for components that haven't migrated to useAuth yet
+  // In practice, components should use the useAuth hook
+  return false;
 };
 
 /**
  * Get current user
- * TODO: Replace with actual user data from auth store
+ * @deprecated Use useAuth hook from AuthContext instead
  */
 export const getCurrentUser = (): User | null => {
-  // Placeholder: Get user from auth store
-  const userStr = localStorage.getItem('user');
-  if (!userStr) return null;
-  try {
-    return JSON.parse(userStr);
-  } catch {
-    return null;
-  }
+  // This is a fallback for components that haven't migrated to useAuth yet
+  // In practice, components should use the useAuth hook
+  return null;
 };
 
 /**
  * Redirect authenticated users away from public routes
+ * @deprecated Use useAuth hook from AuthContext instead
  */
 export const shouldRedirectToDashboard = (): boolean => {
   return isAuthenticated();

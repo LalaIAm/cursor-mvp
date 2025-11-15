@@ -1,4 +1,5 @@
-export default {
+/** @type {import('jest').Config} */
+module.exports = {
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   moduleNameMapper: {
@@ -6,12 +7,16 @@ export default {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
   transform: {
-    '^.+\\.(ts|tsx)$': ['ts-jest', {
-      tsconfig: {
-        jsx: 'react-jsx',
-        esModuleInterop: true,
+    '^.+\\.(ts|tsx)$': [
+      'ts-jest',
+      {
+        tsconfig: {
+          jsx: 'react-jsx',
+          esModuleInterop: true,
+          allowSyntheticDefaultImports: true,
+        },
       },
-    }],
+    ],
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   testMatch: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[jt]s?(x)'],
@@ -21,11 +26,11 @@ export default {
     '!src/main.tsx',
     '!src/vite-env.d.ts',
   ],
-  extensionsToTreatAsEsm: ['.ts', '.tsx'],
-  globals: {
-    'ts-jest': {
-      useESM: true,
-    },
-  },
+  testTimeout: 10000,
+  transformIgnorePatterns: [
+    'node_modules/(?!(react-router-dom|@testing-library)/)',
+  ],
+  clearMocks: true,
+  restoreMocks: true,
 };
 

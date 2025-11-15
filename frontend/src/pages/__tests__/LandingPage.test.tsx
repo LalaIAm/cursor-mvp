@@ -132,8 +132,8 @@ describe('LandingPage', () => {
   });
 
   it('redirects authenticated users to dashboard', () => {
-    const { shouldRedirectToDashboard } = require('@/utils/auth');
-    shouldRedirectToDashboard.mockReturnValue(true);
+    const authModule = require('@/utils/auth');
+    authModule.shouldRedirectToDashboard.mockReturnValue(true);
 
     renderLandingPage();
     expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true });

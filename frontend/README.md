@@ -73,6 +73,7 @@ frontend/
 │   └── index.css         # Global styles
 ├── cypress/              # Cypress E2E tests
 ├── public/               # Static assets
+├── jest.config.cjs       # Jest configuration (CommonJS)
 └── package.json
 ```
 

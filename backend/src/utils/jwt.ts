@@ -1,6 +1,6 @@
-import jwt from 'jsonwebtoken';
-import { config } from '../config';
-import crypto from 'crypto';
+import jwt from "jsonwebtoken";
+import { config } from "../config";
+import crypto from "crypto";
 
 export interface TokenPayload {
   userId: string;
@@ -13,7 +13,7 @@ export interface TokenPayload {
 export const generateAccessToken = (payload: TokenPayload): string => {
   return jwt.sign(payload, config.jwt.secret, {
     expiresIn: config.jwt.accessTokenExpiry,
-  });
+  } as jwt.SignOptions);
 };
 
 /**
@@ -21,7 +21,7 @@ export const generateAccessToken = (payload: TokenPayload): string => {
  * This will be stored in the database and set as HttpOnly cookie
  */
 export const generateRefreshToken = (): string => {
-  return crypto.randomBytes(32).toString('hex');
+  return crypto.randomBytes(32).toString("hex");
 };
 
 /**
@@ -32,7 +32,7 @@ export const verifyAccessToken = (token: string): TokenPayload => {
     const decoded = jwt.verify(token, config.jwt.secret) as TokenPayload;
     return decoded;
   } catch (error) {
-    throw new Error('Invalid or expired token');
+    throw new Error("Invalid or expired token");
   }
 };
 
@@ -41,6 +41,5 @@ export const verifyAccessToken = (token: string): TokenPayload => {
  * We store a hash to prevent token theft from database
  */
 export const hashRefreshToken = (token: string): string => {
-  return crypto.createHash('sha256').update(token).digest('hex');
+  return crypto.createHash("sha256").update(token).digest("hex");
 };
-

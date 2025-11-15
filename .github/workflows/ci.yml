@@ -1,0 +1,448 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: tarotlyfe_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://test_user:test_password@localhost:5432/tarotlyfe_test
+      TEST_DATABASE_URL: postgresql://test_user:test_password@localhost:5432/tarotlyfe_test
+      JWT_SECRET: test-jwt-secret-for-ci
+      PORT: 3001
+      EMAIL_PROVIDER: console
+      EMAIL_FROM: test@tarotlyfe.com
+      FRONTEND_URL: http://localhost:5173
+      PASSWORD_RESET_TOKEN_TTL_HOURS: 1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5432 -U test_user; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+
+      - name: Run database migrations
+        working-directory: ./backend
+        run: |
+          # Run migrations using psql
+          PGPASSWORD=test_password psql -h localhost -U test_user -d tarotlyfe_test -f src/db/migrations/001_create_users_table.sql
+          PGPASSWORD=test_password psql -h localhost -U test_user -d tarotlyfe_test -f src/db/migrations/002_create_password_reset_tokens_table.sql
+        env:
+          PGPASSWORD: test_password
+
+      - name: Run backend tests with coverage
+        working-directory: ./backend
+        run: npm run test:coverage
+        continue-on-error: false
+
+      - name: Upload backend coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: backend/coverage
+          retention-days: 30
+
+      - name: Upload backend test results (lcov)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-lcov
+          path: backend/coverage/lcov.info
+          retention-days: 30
+          if-no-files-found: ignore
+
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run frontend tests with coverage
+        working-directory: ./frontend
+        run: npm run test:coverage
+        continue-on-error: false
+
+      - name: Upload frontend coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+          retention-days: 30
+
+      - name: Upload frontend test results (lcov)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-lcov
+          path: frontend/coverage/lcov.info
+          retention-days: 30
+          if-no-files-found: ignore
+
+  frontend-e2e:
+    name: Frontend E2E Tests
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: tarotlyfe_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://test_user:test_password@localhost:5432/tarotlyfe_test
+      TEST_DATABASE_URL: postgresql://test_user:test_password@localhost:5432/tarotlyfe_test
+      JWT_SECRET: test-jwt-secret-for-ci
+      PORT: 3001
+      EMAIL_PROVIDER: console
+      EMAIL_FROM: test@tarotlyfe.com
+      FRONTEND_URL: http://localhost:3000
+      PASSWORD_RESET_TOKEN_TTL_HOURS: 1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5432 -U test_user; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+
+      - name: Run database migrations
+        working-directory: ./backend
+        run: |
+          PGPASSWORD=test_password psql -h localhost -U test_user -d tarotlyfe_test -f src/db/migrations/001_create_users_table.sql
+          PGPASSWORD=test_password psql -h localhost -U test_user -d tarotlyfe_test -f src/db/migrations/002_create_password_reset_tokens_table.sql
+        env:
+          PGPASSWORD: test_password
+
+      - name: Build backend
+        working-directory: ./backend
+        run: npm run build
+
+      - name: Start backend server
+        working-directory: ./backend
+        run: |
+          npm start &
+          echo "Backend server starting..."
+          sleep 3
+        env:
+          NODE_ENV: ci
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/tarotlyfe_test
+          TEST_DATABASE_URL: postgresql://test_user:test_password@localhost:5432/tarotlyfe_test
+          START_SERVER: 'true'
+          JWT_SECRET: test-jwt-secret-for-ci
+          PORT: 3001
+          EMAIL_PROVIDER: console
+          EMAIL_FROM: test@tarotlyfe.com
+          FRONTEND_URL: http://localhost:3000
+          PASSWORD_RESET_TOKEN_TTL_HOURS: 1
+
+      - name: Start frontend dev server
+        working-directory: ./frontend
+        run: |
+          npm run dev &
+          echo "Frontend dev server starting..."
+        continue-on-error: false
+
+      - name: Wait for servers to be ready
+        run: |
+          echo "Waiting for servers to start..."
+          # Wait for backend health endpoint
+          for i in {1..30}; do
+            if curl -f http://localhost:3001/health > /dev/null 2>&1; then
+              echo "Backend server is ready!"
+              break
+            fi
+            echo "Waiting for backend server... ($i/30)"
+            sleep 2
+          done
+          
+          # Wait for frontend dev server
+          for i in {1..30}; do
+            if curl -f http://localhost:3000 > /dev/null 2>&1; then
+              echo "Frontend server is ready!"
+              break
+            fi
+            echo "Waiting for frontend server... ($i/30)"
+            sleep 2
+          done
+          
+          # Final verification
+          curl -f http://localhost:3001/health || (echo "Backend health check failed" && exit 1)
+          curl -f http://localhost:3000 || (echo "Frontend server check failed" && exit 1)
+          echo "✅ All servers are ready!"
+
+      - name: Create Cypress reports directory
+        working-directory: ./frontend
+        run: mkdir -p cypress/reports
+
+      - name: Run Cypress E2E tests
+        working-directory: ./frontend
+        run: npm run test:e2e
+        continue-on-error: false
+
+      - name: Upload Cypress test results (JUnit)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-test-results
+          path: frontend/cypress/reports/*.xml
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload Cypress videos
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-videos
+          path: frontend/cypress/videos
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload Cypress screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-screenshots
+          path: frontend/cypress/screenshots
+          retention-days: 30
+          if-no-files-found: ignore
+
+  test-report:
+    name: Test Report Summary
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests, frontend-e2e]
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download backend coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend-coverage
+          if-no-files-found: ignore
+
+      - name: Download frontend coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend-coverage
+          if-no-files-found: ignore
+
+      - name: Download Cypress test results
+        uses: actions/download-artifact@v4
+        with:
+          name: cypress-test-results
+          path: cypress-results
+          if-no-files-found: ignore
+
+      - name: Generate test report summary
+        run: |
+          echo "# 📊 Test Report Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Backend coverage summary
+          echo "## 🔧 Backend Tests" >> $GITHUB_STEP_SUMMARY
+          if [ -d "backend-coverage" ]; then
+            echo "✅ Backend tests completed successfully" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            # Try to extract coverage from summary if available
+            if [ -f "backend-coverage/coverage-summary.json" ] || [ -f "backend-coverage/coverage/coverage-summary.json" ]; then
+              COV_FILE="backend-coverage/coverage-summary.json"
+              [ ! -f "$COV_FILE" ] && COV_FILE="backend-coverage/coverage/coverage-summary.json"
+              echo "### Coverage Summary:" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              # Extract lines coverage percentage if available
+              LINES_COV=$(grep -o '"lines":{"total":[0-9]*,"covered":[0-9]*,"skipped":[0-9]*,"pct":[0-9.]*}' "$COV_FILE" 2>/dev/null | grep -o '"pct":[0-9.]*' | cut -d: -f2 || echo "N/A")
+              STATEMENTS_COV=$(grep -o '"statements":{"total":[0-9]*,"covered":[0-9]*,"skipped":[0-9]*,"pct":[0-9.]*}' "$COV_FILE" 2>/dev/null | grep -o '"pct":[0-9.]*' | cut -d: -f2 || echo "N/A")
+              FUNCTIONS_COV=$(grep -o '"functions":{"total":[0-9]*,"covered":[0-9]*,"skipped":[0-9]*,"pct":[0-9.]*}' "$COV_FILE" 2>/dev/null | grep -o '"pct":[0-9.]*' | cut -d: -f2 || echo "N/A")
+              BRANCHES_COV=$(grep -o '"branches":{"total":[0-9]*,"covered":[0-9]*,"skipped":[0-9]*,"pct":[0-9.]*}' "$COV_FILE" 2>/dev/null | grep -o '"pct":[0-9.]*' | cut -d: -f2 || echo "N/A")
+              
+              echo "Lines: ${LINES_COV}%" >> $GITHUB_STEP_SUMMARY
+              echo "Statements: ${STATEMENTS_COV}%" >> $GITHUB_STEP_SUMMARY
+              echo "Functions: ${FUNCTIONS_COV}%" >> $GITHUB_STEP_SUMMARY
+              echo "Branches: ${BRANCHES_COV}%" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📁 **Coverage Reports Available:**" >> $GITHUB_STEP_SUMMARY
+            echo "- HTML report: Download \`backend-coverage\` artifact and open \`index.html\`" >> $GITHUB_STEP_SUMMARY
+            echo "- LCOV report: Available in \`backend-lcov\` artifact" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Backend coverage report not found" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Frontend coverage summary
+          echo "## ⚛️ Frontend Tests" >> $GITHUB_STEP_SUMMARY
+          if [ -d "frontend-coverage" ]; then
+            echo "✅ Frontend tests completed successfully" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            # Try to extract coverage from summary if available
+            if [ -f "frontend-coverage/coverage-summary.json" ] || [ -f "frontend-coverage/coverage/coverage-summary.json" ]; then
+              COV_FILE="frontend-coverage/coverage-summary.json"
+              [ ! -f "$COV_FILE" ] && COV_FILE="frontend-coverage/coverage/coverage-summary.json"
+              echo "### Coverage Summary:" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              # Extract lines coverage percentage if available
+              LINES_COV=$(grep -o '"lines":{"total":[0-9]*,"covered":[0-9]*,"skipped":[0-9]*,"pct":[0-9.]*}' "$COV_FILE" 2>/dev/null | grep -o '"pct":[0-9.]*' | cut -d: -f2 || echo "N/A")
+              STATEMENTS_COV=$(grep -o '"statements":{"total":[0-9]*,"covered":[0-9]*,"skipped":[0-9]*,"pct":[0-9.]*}' "$COV_FILE" 2>/dev/null | grep -o '"pct":[0-9.]*' | cut -d: -f2 || echo "N/A")
+              FUNCTIONS_COV=$(grep -o '"functions":{"total":[0-9]*,"covered":[0-9]*,"skipped":[0-9]*,"pct":[0-9.]*}' "$COV_FILE" 2>/dev/null | grep -o '"pct":[0-9.]*' | cut -d: -f2 || echo "N/A")
+              BRANCHES_COV=$(grep -o '"branches":{"total":[0-9]*,"covered":[0-9]*,"skipped":[0-9]*,"pct":[0-9.]*}' "$COV_FILE" 2>/dev/null | grep -o '"pct":[0-9.]*' | cut -d: -f2 || echo "N/A")
+              
+              echo "Lines: ${LINES_COV}%" >> $GITHUB_STEP_SUMMARY
+              echo "Statements: ${STATEMENTS_COV}%" >> $GITHUB_STEP_SUMMARY
+              echo "Functions: ${FUNCTIONS_COV}%" >> $GITHUB_STEP_SUMMARY
+              echo "Branches: ${BRANCHES_COV}%" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            fi
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📁 **Coverage Reports Available:**" >> $GITHUB_STEP_SUMMARY
+            echo "- HTML report: Download \`frontend-coverage\` artifact and open \`index.html\`" >> $GITHUB_STEP_SUMMARY
+            echo "- LCOV report: Available in \`frontend-lcov\` artifact" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Frontend coverage report not found" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # E2E test summary
+          echo "## 🎭 E2E Tests (Cypress)" >> $GITHUB_STEP_SUMMARY
+          if [ -d "cypress-results" ] && [ "$(ls -A cypress-results 2>/dev/null)" ]; then
+            echo "✅ E2E tests completed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📁 **E2E Test Reports Available:**" >> $GITHUB_STEP_SUMMARY
+            echo "- JUnit XML reports: Download \`cypress-test-results\` artifact" >> $GITHUB_STEP_SUMMARY
+            echo "- Test videos: Download \`cypress-videos\` artifact" >> $GITHUB_STEP_SUMMARY
+            echo "- Failure screenshots: Download \`cypress-screenshots\` artifact" >> $GITHUB_STEP_SUMMARY
+            
+            # Try to extract test summary from JUnit XML if available
+            if [ -f "cypress-results"/*.xml ]; then
+              XML_FILE=$(ls cypress-results/*.xml | head -1)
+              TESTS=$(grep -o 'tests="[0-9]*"' "$XML_FILE" 2>/dev/null | grep -o '[0-9]*' | head -1 || echo "N/A")
+              FAILURES=$(grep -o 'failures="[0-9]*"' "$XML_FILE" 2>/dev/null | grep -o '[0-9]*' | head -1 || echo "0")
+              ERRORS=$(grep -o 'errors="[0-9]*"' "$XML_FILE" 2>/dev/null | grep -o '[0-9]*' | head -1 || echo "0")
+              
+              if [ "$TESTS" != "N/A" ]; then
+                echo "" >> $GITHUB_STEP_SUMMARY
+                echo "### Test Summary:" >> $GITHUB_STEP_SUMMARY
+                echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+                echo "Total Tests: ${TESTS}" >> $GITHUB_STEP_SUMMARY
+                echo "Failures: ${FAILURES}" >> $GITHUB_STEP_SUMMARY
+                echo "Errors: ${ERRORS}" >> $GITHUB_STEP_SUMMARY
+                echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              fi
+            fi
+          else
+            echo "⚠️ E2E test results not found" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## 📦 How to View Coverage Reports" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. Go to the workflow run page" >> $GITHUB_STEP_SUMMARY
+          echo "2. Scroll down to the \`Artifacts\` section" >> $GITHUB_STEP_SUMMARY
+          echo "3. Download the coverage artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "4. Extract and open \`coverage/index.html\` in a browser" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "💡 LCOV files can be used with coverage visualization tools like Codecov or Coveralls" >> $GITHUB_STEP_SUMMARY
+

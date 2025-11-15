@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
-import { z, ZodError } from 'zod';
+import { Request, Response, NextFunction } from "express";
+import { z, ZodError } from "zod";
 
 /**
  * Validation middleware factory
@@ -7,19 +7,21 @@ import { z, ZodError } from 'zod';
 export const validate = (schema: z.ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
-      schema.parse(req.body);
+      // Parse and apply transformations (e.g., toLowerCase(), trim())
+      // Assign the transformed result back to req.body
+      req.body = schema.parse(req.body);
       next();
     } catch (error) {
       if (error instanceof ZodError) {
         const errors = error.errors.map((err) => ({
-          field: err.path.join('.'),
+          field: err.path.join("."),
           message: err.message,
         }));
 
         res.status(400).json({
           error: {
-            code: 'validation_error',
-            message: 'Validation failed',
+            code: "validation_error",
+            message: "Validation failed",
             details: errors,
           },
         });
@@ -29,4 +31,3 @@ export const validate = (schema: z.ZodSchema) => {
     }
   };
 };
-

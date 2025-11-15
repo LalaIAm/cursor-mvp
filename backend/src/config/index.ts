@@ -1,10 +1,14 @@
 import dotenv from 'dotenv';
 
+// Load .env file (won't override existing env vars)
 dotenv.config();
 
 export const config = {
   database: {
-    url: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/tarotlyfe',
+    // Use TEST_DATABASE_URL if in test environment, otherwise DATABASE_URL, with fallback
+    url: process.env.NODE_ENV === 'test' 
+      ? (process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://test_user:test_password@localhost:5432/tarotlyfe_test')
+      : (process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/tarotlyfe'),
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',
@@ -23,6 +27,18 @@ export const config = {
   },
   bcrypt: {
     rounds: parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
+  },
+  passwordReset: {
+    tokenTTLHours: parseInt(process.env.PASSWORD_RESET_TOKEN_TTL_HOURS || '1', 10),
+  },
+  email: {
+    provider: process.env.EMAIL_PROVIDER || 'console',
+    from: process.env.EMAIL_FROM || 'noreply@tarotlyfe.com',
+    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+    sendgridApiKey: process.env.SENDGRID_API_KEY,
+    sesRegion: process.env.AWS_SES_REGION,
+    sesAccessKey: process.env.AWS_SES_ACCESS_KEY,
+    sesSecretKey: process.env.AWS_SES_SECRET_KEY,
   },
 };
 

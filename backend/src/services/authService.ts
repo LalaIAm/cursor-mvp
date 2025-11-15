@@ -49,26 +49,49 @@ export const registerUser = async (
   const passwordHash = await hashPassword(input.password);
 
   // Insert user
-  const result = await queryOne<User>(
-    `INSERT INTO users (email, password_hash)
-     VALUES ($1, $2)
-     RETURNING id, email, created_at, updated_at`,
-    [input.email, passwordHash]
-  );
+  // Note: We still check for existing user above for better error messages,
+  // but the database unique constraint is the ultimate protection against race conditions
+  try {
+    const result = await queryOne<User>(
+      `INSERT INTO users (email, password_hash)
+       VALUES ($1, $2)
+       RETURNING id, email, created_at, updated_at`,
+      [input.email, passwordHash]
+    );
 
-  if (!result) {
-    const error: any = new Error("Failed to create user");
-    error.statusCode = 500;
-    error.code = "server_error";
+    if (!result) {
+      const error: any = new Error("Failed to create user");
+      error.statusCode = 500;
+      error.code = "server_error";
+      throw error;
+    }
+
+    return {
+      user: {
+        id: result.id,
+        email: result.email,
+      },
+    };
+  } catch (error: any) {
+    // Handle race condition: if two requests arrive simultaneously,
+    // the second INSERT will fail with a unique constraint violation
+    // PostgreSQL error code '23505' = unique_violation
+    // Also check constraint name or error message for additional safety
+    if (
+      error.code === "23505" ||
+      error.constraint === "users_email_key" ||
+      (error.message &&
+        error.message.includes("duplicate key value") &&
+        error.message.includes("email"))
+    ) {
+      const duplicateError: any = new Error("Email already registered");
+      duplicateError.statusCode = 409;
+      duplicateError.code = "duplicate_email";
+      throw duplicateError;
+    }
+    // Re-throw other errors
     throw error;
   }
-
-  return {
-    user: {
-      id: result.id,
-      email: result.email,
-    },
-  };
 };
 
 /**

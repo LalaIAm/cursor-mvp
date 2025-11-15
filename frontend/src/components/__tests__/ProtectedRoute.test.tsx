@@ -1,9 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { AuthProvider } from '@/context/AuthContext';
 import ProtectedRoute from '../ProtectedRoute';
-import * as authUtils from '@/utils/auth';
 
-jest.mock('@/utils/auth');
+// Mock useAuth hook to control authentication state
+const mockUseAuth = jest.fn();
+jest.mock('@/context/AuthContext', () => ({
+  ...jest.requireActual('@/context/AuthContext'),
+  useAuth: () => mockUseAuth(),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 
 describe('ProtectedRoute', () => {
   beforeEach(() => {
@@ -11,13 +17,21 @@ describe('ProtectedRoute', () => {
   });
 
   it('renders children when user is authenticated', () => {
-    (authUtils.isAuthenticated as jest.Mock).mockReturnValue(true);
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: true,
+      user: { id: '1', email: 'test@example.com' },
+      isLoading: false,
+      setAuth: jest.fn(),
+      clearAuth: jest.fn(),
+    });
 
     render(
       <MemoryRouter>
-        <ProtectedRoute>
-          <div>Protected Content</div>
-        </ProtectedRoute>
+        <AuthProvider>
+          <ProtectedRoute>
+            <div>Protected Content</div>
+          </ProtectedRoute>
+        </AuthProvider>
       </MemoryRouter>
     );
 
@@ -25,16 +39,47 @@ describe('ProtectedRoute', () => {
   });
 
   it('redirects to login when user is not authenticated', () => {
-    (authUtils.isAuthenticated as jest.Mock).mockReturnValue(false);
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: false,
+      user: null,
+      isLoading: false,
+      setAuth: jest.fn(),
+      clearAuth: jest.fn(),
+    });
 
     render(
       <MemoryRouter initialEntries={['/dashboard']}>
-        <ProtectedRoute>
-          <div>Protected Content</div>
-        </ProtectedRoute>
+        <AuthProvider>
+          <ProtectedRoute>
+            <div>Protected Content</div>
+          </ProtectedRoute>
+        </AuthProvider>
       </MemoryRouter>
     );
 
+    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+  });
+
+  it('shows loading state while checking authentication', () => {
+    mockUseAuth.mockReturnValue({
+      isAuthenticated: false,
+      user: null,
+      isLoading: true,
+      setAuth: jest.fn(),
+      clearAuth: jest.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ProtectedRoute>
+            <div>Protected Content</div>
+          </ProtectedRoute>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
   });
 });

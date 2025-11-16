@@ -5,12 +5,14 @@ Node.js REST API backend for TarotLyfe application.
 ## Features
 
 - User registration and authentication
+- Password reset flow with secure token-based reset
 - JWT access tokens (1 hour expiry)
 - HttpOnly refresh token cookies (30 days expiry)
 - Secure password hashing with bcrypt
 - PostgreSQL database
 - Input validation with Zod
 - Comprehensive error handling
+- Email service integration (console, SendGrid, AWS SES)
 
 ## Setup
 
@@ -46,6 +48,7 @@ createdb tarotlyfe
 5. Run migrations:
 ```bash
 psql -d tarotlyfe -f src/db/migrations/001_create_users_table.sql
+psql -d tarotlyfe -f src/db/migrations/002_create_password_reset_tokens_table.sql
 ```
 
 ### Running the Server
@@ -123,6 +126,56 @@ Login and receive access token.
 - `400 Bad Request`: Validation error
 - `401 Unauthorized`: Invalid credentials
 
+### POST /api/auth/password-reset/request
+
+Request a password reset email.
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "If an account exists with this email, a password reset link has been sent."
+}
+```
+
+**Note:** Always returns success to prevent user enumeration attacks.
+
+**Error Responses:**
+- `400 Bad Request`: Validation error (invalid email format)
+
+### POST /api/auth/password-reset/confirm
+
+Confirm password reset and set new password.
+
+**Request Body:**
+```json
+{
+  "token": "reset-token-from-email",
+  "newPassword": "NewSecurePass123!"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Password has been reset successfully. Please log in with your new password."
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid or expired token, or weak password
+
+**Security Notes:**
+- Reset tokens expire after 1 hour (configurable via `PASSWORD_RESET_TOKEN_TTL_HOURS`)
+- Tokens are single-use only
+- Password change invalidates all active sessions (refresh tokens cleared)
+
 ## Password Requirements
 
 - Minimum 8 characters
@@ -157,15 +210,22 @@ npm run test:coverage
 | `PORT` | Server port | `3001` |
 | `NODE_ENV` | Environment | `development` |
 | `BCRYPT_ROUNDS` | Bcrypt salt rounds | `12` |
+| `PASSWORD_RESET_TOKEN_TTL_HOURS` | Password reset token expiry (hours) | `1` |
+| `EMAIL_PROVIDER` | Email service provider (`console`, `sendgrid`, `ses`) | `console` |
+| `EMAIL_FROM` | Sender email address | `noreply@tarotlyfe.com` |
+| `FRONTEND_URL` | Frontend URL for reset links | `http://localhost:5173` |
 
 ## Security Considerations
 
 - Passwords are hashed using bcrypt with configurable rounds
 - Refresh tokens are hashed before storage in database
+- Password reset tokens are cryptographically secure and hashed before storage
 - JWT tokens are signed with a secret key
 - HttpOnly cookies prevent XSS attacks
 - Input validation prevents injection attacks
 - Error messages don't leak sensitive information
+- Password reset responses are generic to prevent user enumeration
+- Password changes invalidate all active sessions
 
 ## Project Structure
 

@@ -85,8 +85,10 @@ describe('PasswordResetConfirmPage', () => {
     const newPasswordInput = screen.getByLabelText(/New Password/i);
     const submitButton = screen.getByRole('button', { name: /Reset Password/i });
 
-    await user.type(newPasswordInput, 'short');
-    await user.click(submitButton);
+    await act(async () => {
+      await user.type(newPasswordInput, 'short');
+      await user.click(submitButton);
+    });
 
     await waitFor(() => {
       // Error appears in the input field error message
@@ -102,9 +104,11 @@ describe('PasswordResetConfirmPage', () => {
     const confirmPasswordInput = screen.getByLabelText(/Confirm Password/i);
     const submitButton = screen.getByRole('button', { name: /Reset Password/i });
 
-    await user.type(newPasswordInput, 'NewPass123!');
-    await user.type(confirmPasswordInput, 'DifferentPass123!');
-    await user.click(submitButton);
+    await act(async () => {
+      await user.type(newPasswordInput, 'NewPass123!');
+      await user.type(confirmPasswordInput, 'DifferentPass123!');
+      await user.click(submitButton);
+    });
 
     await waitFor(() => {
       // Error appears in the input field error message
@@ -119,8 +123,10 @@ describe('PasswordResetConfirmPage', () => {
     const newPasswordInput = screen.getByLabelText(/New Password/i);
     const submitButton = screen.getByRole('button', { name: /Reset Password/i });
 
-    await user.type(newPasswordInput, 'NewPass123!');
-    await user.click(submitButton);
+    await act(async () => {
+      await user.type(newPasswordInput, 'NewPass123!');
+      await user.click(submitButton);
+    });
 
     await waitFor(() => {
       // Error appears in the input field error message
@@ -143,10 +149,9 @@ describe('PasswordResetConfirmPage', () => {
     const confirmPasswordInput = screen.getByLabelText(/Confirm Password/i);
     const submitButton = screen.getByRole('button', { name: /Reset Password/i });
 
-    await user.type(newPasswordInput, 'NewPass123!');
-    await user.type(confirmPasswordInput, 'NewPass123!');
-    
     await act(async () => {
+      await user.type(newPasswordInput, 'NewPass123!');
+      await user.type(confirmPasswordInput, 'NewPass123!');
       await user.click(submitButton);
     });
 
@@ -179,9 +184,11 @@ describe('PasswordResetConfirmPage', () => {
     const confirmPasswordInput = screen.getByLabelText(/Confirm Password/i);
     const submitButton = screen.getByRole('button', { name: /Reset Password/i });
 
-    await user.type(newPasswordInput, 'NewPass123!');
-    await user.type(confirmPasswordInput, 'NewPass123!');
-    await user.click(submitButton);
+    await act(async () => {
+      await user.type(newPasswordInput, 'NewPass123!');
+      await user.type(confirmPasswordInput, 'NewPass123!');
+      await user.click(submitButton);
+    });
 
     expect(screen.getByText(/Loading.../i)).toBeInTheDocument();
     expect(submitButton).toBeDisabled();
@@ -204,18 +211,18 @@ describe('PasswordResetConfirmPage', () => {
     const confirmPasswordInput = screen.getByLabelText(/Confirm Password/i);
     const submitButton = screen.getByRole('button', { name: /Reset Password/i });
 
-    await user.type(newPasswordInput, 'NewPass123!');
-    await user.type(confirmPasswordInput, 'NewPass123!');
-    
     await act(async () => {
+      await user.type(newPasswordInput, 'NewPass123!');
+      await user.type(confirmPasswordInput, 'NewPass123!');
       await user.click(submitButton);
     });
 
     await waitFor(() => {
       const errorAlert = screen.getByRole('alert');
       expect(errorAlert).toHaveTextContent(/This password reset link is invalid or has expired/i);
+      // Check that the link exists within the error alert
+      expect(errorAlert).toHaveTextContent(/Request a new reset link/i);
     });
-    expect(screen.getByText(/Request a new reset link/i)).toBeInTheDocument();
   }, 15000);
 
   it('handles expired token error', async () => {
@@ -235,10 +242,9 @@ describe('PasswordResetConfirmPage', () => {
     const confirmPasswordInput = screen.getByLabelText(/Confirm Password/i);
     const submitButton = screen.getByRole('button', { name: /Reset Password/i });
 
-    await user.type(newPasswordInput, 'NewPass123!');
-    await user.type(confirmPasswordInput, 'NewPass123!');
-    
     await act(async () => {
+      await user.type(newPasswordInput, 'NewPass123!');
+      await user.type(confirmPasswordInput, 'NewPass123!');
       await user.click(submitButton);
     });
 
@@ -263,10 +269,9 @@ describe('PasswordResetConfirmPage', () => {
     const confirmPasswordInput = screen.getByLabelText(/Confirm Password/i) as HTMLInputElement;
     const submitButton = screen.getByRole('button', { name: /Reset Password/i });
 
-    await user.type(newPasswordInput, 'NewPass123!');
-    await user.type(confirmPasswordInput, 'NewPass123!');
-    
     await act(async () => {
+      await user.type(newPasswordInput, 'NewPass123!');
+      await user.type(confirmPasswordInput, 'NewPass123!');
       await user.click(submitButton);
     });
 
@@ -291,10 +296,9 @@ describe('PasswordResetConfirmPage', () => {
     const confirmPasswordInput = screen.getByLabelText(/Confirm Password/i);
     const submitButton = screen.getByRole('button', { name: /Reset Password/i });
 
-    await user.type(newPasswordInput, 'NewPass123!');
-    await user.type(confirmPasswordInput, 'NewPass123!');
-    
     await act(async () => {
+      await user.type(newPasswordInput, 'NewPass123!');
+      await user.type(confirmPasswordInput, 'NewPass123!');
       await user.click(submitButton);
     });
 
@@ -310,7 +314,10 @@ describe('PasswordResetConfirmPage', () => {
     renderPasswordResetConfirmPage();
 
     const requestLinkButton = screen.getByRole('button', { name: /Request New Reset Link/i });
-    await user.click(requestLinkButton);
+    
+    await act(async () => {
+      await user.click(requestLinkButton);
+    });
 
     expect(mockNavigate).toHaveBeenCalledWith('/password-reset');
   });
@@ -319,8 +326,13 @@ describe('PasswordResetConfirmPage', () => {
     const user = userEvent.setup();
     renderPasswordResetConfirmPage('test-token');
 
-    const requestLink = screen.getByText(/Request a new reset link/i);
-    await user.click(requestLink);
+    // There are multiple links with this text, get all and click the first one
+    const requestLinks = screen.getAllByText(/Request a new reset link/i);
+    expect(requestLinks.length).toBeGreaterThan(0);
+    
+    await act(async () => {
+      await user.click(requestLinks[0]);
+    });
 
     expect(mockNavigate).toHaveBeenCalledWith('/password-reset');
   });
@@ -330,7 +342,10 @@ describe('PasswordResetConfirmPage', () => {
     renderPasswordResetConfirmPage('test-token');
 
     const loginLink = screen.getByText(/Log in/i);
-    await user.click(loginLink);
+    
+    await act(async () => {
+      await user.click(loginLink);
+    });
 
     expect(mockNavigate).toHaveBeenCalledWith('/login');
   });

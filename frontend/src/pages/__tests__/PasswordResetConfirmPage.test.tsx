@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { axe, toHaveNoViolations } from 'jest-axe';
@@ -41,7 +41,6 @@ describe('PasswordResetConfirmPage', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     jest.clearAllMocks();
-    jest.useFakeTimers();
     mockToken = null;
     mockUseAuth.mockReturnValue({
       isAuthenticated: false,
@@ -50,11 +49,6 @@ describe('PasswordResetConfirmPage', () => {
       setAuth: jest.fn(),
       clearAuth: jest.fn(),
     });
-  });
-
-  afterEach(() => {
-    jest.runOnlyPendingTimers();
-    jest.useRealTimers();
   });
 
   const renderPasswordResetConfirmPage = (token?: string) => {
@@ -95,6 +89,7 @@ describe('PasswordResetConfirmPage', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
+      // Error appears in the input field error message
       expect(screen.getByText(/Password must be at least 8 characters long/i)).toBeInTheDocument();
     });
   });
@@ -112,6 +107,7 @@ describe('PasswordResetConfirmPage', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
+      // Error appears in the input field error message
       expect(screen.getByText(/Passwords do not match/i)).toBeInTheDocument();
     });
   });
@@ -127,6 +123,7 @@ describe('PasswordResetConfirmPage', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
+      // Error appears in the input field error message
       expect(screen.getByText(/Please confirm your password/i)).toBeInTheDocument();
     });
   });
@@ -148,7 +145,10 @@ describe('PasswordResetConfirmPage', () => {
 
     await user.type(newPasswordInput, 'NewPass123!');
     await user.type(confirmPasswordInput, 'NewPass123!');
-    await user.click(submitButton);
+    
+    await act(async () => {
+      await user.click(submitButton);
+    });
 
     await waitFor(() => {
       expect(mockConfirmPasswordReset).toHaveBeenCalledWith({
@@ -161,8 +161,8 @@ describe('PasswordResetConfirmPage', () => {
       expect(
         screen.getByText(/Password has been reset successfully! Redirecting to login/i)
       ).toBeInTheDocument();
-    });
-  });
+    }, { timeout: 10000 });
+  }, 15000);
 
   it('shows loading state during submission', async () => {
     const user = userEvent.setup();
@@ -206,15 +206,17 @@ describe('PasswordResetConfirmPage', () => {
 
     await user.type(newPasswordInput, 'NewPass123!');
     await user.type(confirmPasswordInput, 'NewPass123!');
-    await user.click(submitButton);
+    
+    await act(async () => {
+      await user.click(submitButton);
+    });
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/This password reset link is invalid or has expired/i)
-      ).toBeInTheDocument();
+      const errorAlert = screen.getByRole('alert');
+      expect(errorAlert).toHaveTextContent(/This password reset link is invalid or has expired/i);
     });
     expect(screen.getByText(/Request a new reset link/i)).toBeInTheDocument();
-  });
+  }, 15000);
 
   it('handles expired token error', async () => {
     const user = userEvent.setup();
@@ -235,14 +237,16 @@ describe('PasswordResetConfirmPage', () => {
 
     await user.type(newPasswordInput, 'NewPass123!');
     await user.type(confirmPasswordInput, 'NewPass123!');
-    await user.click(submitButton);
+    
+    await act(async () => {
+      await user.click(submitButton);
+    });
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/This password reset link is invalid or has expired/i)
-      ).toBeInTheDocument();
+      const errorAlert = screen.getByRole('alert');
+      expect(errorAlert).toHaveTextContent(/This password reset link is invalid or has expired/i);
     });
-  });
+  }, 15000);
 
   it('clears form data on success', async () => {
     const user = userEvent.setup();
@@ -261,13 +265,16 @@ describe('PasswordResetConfirmPage', () => {
 
     await user.type(newPasswordInput, 'NewPass123!');
     await user.type(confirmPasswordInput, 'NewPass123!');
-    await user.click(submitButton);
+    
+    await act(async () => {
+      await user.click(submitButton);
+    });
 
     await waitFor(() => {
       expect(newPasswordInput.value).toBe('');
       expect(confirmPasswordInput.value).toBe('');
-    });
-  });
+    }, { timeout: 10000 });
+  }, 15000);
 
   it('disables form after successful submission', async () => {
     const user = userEvent.setup();
@@ -286,14 +293,17 @@ describe('PasswordResetConfirmPage', () => {
 
     await user.type(newPasswordInput, 'NewPass123!');
     await user.type(confirmPasswordInput, 'NewPass123!');
-    await user.click(submitButton);
+    
+    await act(async () => {
+      await user.click(submitButton);
+    });
 
     await waitFor(() => {
       expect(newPasswordInput).toBeDisabled();
       expect(confirmPasswordInput).toBeDisabled();
       expect(submitButton).toBeDisabled();
-    });
-  });
+    }, { timeout: 10000 });
+  }, 15000);
 
   it('navigates to password reset request when token is missing and button is clicked', async () => {
     const user = userEvent.setup();

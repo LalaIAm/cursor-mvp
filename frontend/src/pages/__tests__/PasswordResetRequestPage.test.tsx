@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { axe, toHaveNoViolations } from 'jest-axe';
@@ -75,7 +75,8 @@ describe('PasswordResetRequestPage', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByText(/Invalid email format/i)).toBeInTheDocument();
+      const errorAlert = screen.getByRole('alert');
+      expect(errorAlert).toHaveTextContent(/Invalid email format/i);
     });
   });
 
@@ -87,7 +88,8 @@ describe('PasswordResetRequestPage', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByText(/Email is required/i)).toBeInTheDocument();
+      const errorAlert = screen.getByRole('alert');
+      expect(errorAlert).toHaveTextContent(/Email is required/i);
     });
   });
 
@@ -161,9 +163,8 @@ describe('PasswordResetRequestPage', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Network error. Please check your connection and try again/i)
-      ).toBeInTheDocument();
+      const errorAlert = screen.getByRole('alert');
+      expect(errorAlert).toHaveTextContent(/Network error. Please check your connection and try again/i);
     });
   });
 

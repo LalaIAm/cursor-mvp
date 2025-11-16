@@ -112,6 +112,7 @@ const PasswordResetRequestPage = () => {
             {/* Error message */}
             {error && (
               <div
+                id="error-message"
                 className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg"
                 role="alert"
                 aria-live="polite"
@@ -128,11 +129,11 @@ const PasswordResetRequestPage = () => {
                 label="Email"
                 value={email}
                 onChange={handleChange}
-                error={error && !isSuccess ? error : undefined}
+                error={undefined}
                 autoComplete="email"
                 required
                 disabled={isSubmitting || isSuccess}
-                aria-describedby={isSuccess ? 'success-message' : undefined}
+                aria-describedby={isSuccess ? 'success-message' : error ? 'error-message' : undefined}
               />
             </div>
 

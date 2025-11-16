@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { confirmPasswordReset } from '@/api/auth';
-import { validatePassword, mapApiErrorToMessage } from '@/utils/validation';
-import Input from '@/components/Input';
-import Button from '@/components/Button';
-import SEO from '@/components/SEO';
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { confirmPasswordReset } from "@/api/auth";
+import { validatePassword, mapApiErrorToMessage } from "@/utils/validation";
+import Input from "@/components/Input";
+import Button from "@/components/Button";
+import SEO from "@/components/SEO";
 
 /**
  * PasswordResetConfirmPage component
@@ -13,11 +13,11 @@ import SEO from '@/components/SEO';
 const PasswordResetConfirmPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const token = searchParams.get("token");
 
   const [formData, setFormData] = useState({
-    newPassword: '',
-    confirmPassword: '',
+    newPassword: "",
+    confirmPassword: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -28,6 +28,7 @@ const PasswordResetConfirmPage = () => {
   const successMessageRef = useRef<HTMLDivElement>(null);
   const newPasswordRef = useRef<HTMLInputElement>(null);
   const confirmPasswordRef = useRef<HTMLInputElement>(null);
+  const redirectTimeoutRef = useRef<number | null>(null);
 
   // Check if token is missing on mount
   useEffect(() => {
@@ -47,10 +48,20 @@ const PasswordResetConfirmPage = () => {
     }
   }, [isSuccess, errors]);
 
+  // Cleanup redirect timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current !== null) {
+        window.clearTimeout(redirectTimeoutRef.current);
+        redirectTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    
+
     // Clear error for this field when user starts typing
     if (errors[name]) {
       setErrors((prev) => {
@@ -59,7 +70,7 @@ const PasswordResetConfirmPage = () => {
         return newErrors;
       });
     }
-    
+
     // Clear submit error when user starts typing
     if (submitError) {
       setSubmitError(null);
@@ -77,9 +88,9 @@ const PasswordResetConfirmPage = () => {
 
     // Validate password confirmation
     if (!formData.confirmPassword.trim()) {
-      newErrors.confirmPassword = 'Please confirm your password';
+      newErrors.confirmPassword = "Please confirm your password";
     } else if (formData.newPassword !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = "Passwords do not match";
     }
 
     setErrors(newErrors);
@@ -111,41 +122,53 @@ const PasswordResetConfirmPage = () => {
 
       // Show success message
       setIsSuccess(true);
-      
+
       // Clear form data for security
       setFormData({
-        newPassword: '',
-        confirmPassword: '',
+        newPassword: "",
+        confirmPassword: "",
       });
 
       // Redirect to login after a short delay
-      setTimeout(() => {
-        navigate('/login', { 
+      redirectTimeoutRef.current = window.setTimeout(() => {
+        navigate("/login", {
           replace: true,
-          state: { 
-            message: 'Password has been reset successfully. Please log in with your new password.' 
-          }
+          state: {
+            message:
+              "Password has been reset successfully. Please log in with your new password.",
+          },
         });
       }, 3000);
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const e =
+        typeof err === "object" && err !== null
+          ? (err as { statusCode?: number; code?: string; message?: string })
+          : {};
+      const statusCode = e.statusCode ?? 0;
+      const errorCode = e.code ?? "";
+      const fallbackMessage =
+        e.message ?? "Failed to reset password. Please try again.";
       // Handle token-related errors
-      if (error.statusCode === 400 || error.statusCode === 401) {
-        const errorCode = error.code || '';
-        if (errorCode.includes('token') || errorCode.includes('expired') || errorCode.includes('invalid')) {
+      if (statusCode === 400 || statusCode === 401) {
+        if (
+          errorCode.includes("token") ||
+          errorCode.includes("expired") ||
+          errorCode.includes("invalid")
+        ) {
           setSubmitError(
-            'This password reset link is invalid or has expired. Please request a new password reset link.'
+            "This password reset link is invalid or has expired. Please request a new password reset link."
           );
         } else {
           const errorMessage = mapApiErrorToMessage(
-            error.code || 'unknown_error',
-            error.message || 'Failed to reset password. Please try again.'
+            errorCode || "unknown_error",
+            fallbackMessage
           );
           setSubmitError(errorMessage);
         }
       } else {
         const errorMessage = mapApiErrorToMessage(
-          error.code || 'unknown_error',
-          error.message || 'Failed to reset password. Please try again.'
+          errorCode || "unknown_error",
+          fallbackMessage
         );
         setSubmitError(errorMessage);
       }
@@ -173,14 +196,15 @@ const PasswordResetConfirmPage = () => {
               aria-live="polite"
             >
               <p className="text-sm text-yellow-800 mb-4">
-                No reset token found. Please use the link from your email to reset your password.
+                No reset token found. Please use the link from your email to
+                reset your password.
               </p>
             </div>
             <div className="space-y-2 text-center">
               <Button
                 variant="primary"
                 className="w-full"
-                onClick={() => navigate('/password-reset')}
+                onClick={() => navigate("/password-reset")}
               >
                 Request New Reset Link
               </Button>
@@ -190,7 +214,7 @@ const PasswordResetConfirmPage = () => {
                   className="text-primary-600 hover:text-primary-700 font-semibold underline focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded"
                   onClick={(e) => {
                     e.preventDefault();
-                    navigate('/login');
+                    navigate("/login");
                   }}
                 >
                   Back to Login
@@ -242,13 +266,14 @@ const PasswordResetConfirmPage = () => {
                 aria-live="polite"
               >
                 <p className="text-sm text-red-800 mb-2">{submitError}</p>
-                {(submitError.includes('invalid') || submitError.includes('expired')) && (
+                {(submitError.includes("invalid") ||
+                  submitError.includes("expired")) && (
                   <a
                     href="/password-reset"
                     className="text-sm text-red-800 underline font-semibold hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded"
                     onClick={(e) => {
                       e.preventDefault();
-                      navigate('/password-reset');
+                      navigate("/password-reset");
                     }}
                   >
                     Request a new reset link
@@ -310,20 +335,20 @@ const PasswordResetConfirmPage = () => {
                 className="text-primary-600 hover:text-primary-700 font-semibold underline focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate('/password-reset');
+                  navigate("/password-reset");
                 }}
               >
                 Request a new reset link
               </a>
             </p>
             <p className="text-gray-600">
-              Remember your password?{' '}
+              Remember your password?{" "}
               <a
                 href="/login"
                 className="text-primary-600 hover:text-primary-700 font-semibold underline focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate('/login');
+                  navigate("/login");
                 }}
               >
                 Log in
@@ -337,4 +362,3 @@ const PasswordResetConfirmPage = () => {
 };
 
 export default PasswordResetConfirmPage;
-
